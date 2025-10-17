@@ -1037,32 +1037,37 @@ def internal_error(error):
 
 def run_server(host='0.0.0.0', port=8002, debug=False):
     """启动Flask服务器"""
-    print("🚀 McKinsey文章抓取API服务器")
+    print("McKinsey文章抓取API服务器 - Zeabur部署版")
     print("=" * 50)
-    print(f"📡 服务地址: http://{host}:{port}")
-    print(f"📁 静态文件目录: {scraper.static_dir}")
-    print(f"📝 N8N监控目录: {scraper.n8n_output_dir}")
+    print(f"服务地址: http://{host}:{port}")
     print("=" * 50)
     print("API接口:")
     print(f"  POST /scrape           - 抓取McKinsey文章")
     print(f"  GET  /health           - 健康检查")
-    print(f"  GET  /list             - 文件列表")
-    print(f"  GET  /files/<filename> - 文件静态服务")
-    print(f"  POST /clean            - 清理旧文件")
     print("=" * 50)
     print("n8n调用示例:")
     print("  POST http://localhost:8002/scrape")
     print("  Body: {} (空对象即可)")
     print("=" * 50)
     
-    app.run(host=host, port=port, debug=debug, threaded=True)
+    if debug:
+        app.run(host=host, port=port, debug=debug, threaded=True)
+    else:
+        # 在生产环境使用waitress服务器（避免greenlet依赖）
+        try:
+            from waitress import serve
+            print("使用Waitress WSGI服务器")
+            serve(app, host=host, port=port, threads=4)
+        except ImportError:
+            print("Waitress不可用，使用Flask内置服务器")
+            app.run(host=host, port=port, debug=False, threaded=True)
 
 if __name__ == '__main__':
     import sys
     
     # 解析命令行参数
     host = '0.0.0.0'
-    port = 8002
+    port = int(os.environ.get('PORT', 8002))  # Zeabur会设置PORT环境变量
     debug = False
     
     for arg in sys.argv[1:]:
@@ -1074,10 +1079,10 @@ if __name__ == '__main__':
             debug = True
         elif arg == '--help':
             print("使用方法:")
-            print("  python mckinsey_api_server.py [选项]")
+            print("  python mckinsey_api_server_simplified.py [选项]")
             print("选项:")
             print("  --host=HOST     服务器地址 (默认: 0.0.0.0)")
-            print("  --port=PORT     端口号 (默认: 8002)")
+            print("  --port=PORT     端口号 (默认: 从环境变量PORT获取，或8002)")
             print("  --debug         启用调试模式")
             print("  --help          显示帮助信息")
             sys.exit(0)
